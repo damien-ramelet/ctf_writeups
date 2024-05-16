@@ -7,53 +7,7 @@ Je l'ai donc patché pour pouvoir rentrer habillé ! J'ai chiffré un nouveau fi
 
 ### Code du challenge
 
-```python
-from LFSR import LFSR
-from generator import CombinerGenerator
-import random as rd
-
-def xor(b1, b2):
-	return bytes(a ^ b for a, b in zip(b1, b2))
-
-#Polynomial representation
-poly1 = [19,5,2,1] # x^19+x^5+x^2+x
-poly2 = [19,6,2,1] # x^19+x^6+x^2+x
-poly3 = [19,9,8,5] # x^19+x^9+x^8+x^5
-
-# initialize states
-state1 = [rd.randint(0,1) for _ in range(max(poly1))] 
-state2 = [rd.randint(0,1) for _ in range(max(poly2))]
-state3 = [rd.randint(0,1) for _ in range(max(poly3))]
-
-#combine function
-combine = lambda x1,x2,x3 : (x1 and x2)^(x1 and x3)^(x2 and x3)
-
-#Create LFSRs
-L1 = LFSR(fpoly=poly1,state=state1)
-L2 = LFSR(fpoly=poly2,state=state2)
-L3 = LFSR(fpoly=poly3,state=state3)
-
-#Create (secure) generator
-generator = CombinerGenerator(combine,L1,L2,L3)
-
-#read the flag
-clear_flag = None
-with open("flag.png","rb") as f:
-	clear_flag = f.read()
-
-#encrypt the flag
-encrypted_flag = b''
-key = b""
-for i in range(len(clear_flag)):
-	random = generator.generateByte()
-	byte = clear_flag[i:i+1]
-	key+=random
-	encrypted_flag += xor(byte,random)
-
-#write encrypted flag
-with open("flag.png.enc","w+b") as f:
-	f.write(encrypted_flag)
-```
+Le code source et les fichiers fournis se trouvent le fichier `challenge.zip`
 
 ___
 
@@ -245,6 +199,118 @@ with open("decrypted_flag.png","wb") as f:
 $ file decrypted_flag.png 
 decrypted_flag.png: PNG image data, 1920 x 1080, 8-bit/color RGBA, non-interlaced
 $ open decrypted_flag.png
+```
+
+![flag](decrypted_flag.png)
+Flag !
+
+
+### Solution intended
+
+Après discussion avec l'auteur du challenge, il s'avère que la solution attendue était une attaque statistique.
+Il fallait en effet remarquer que la fonction `combine` permettait une [correlation attack](https://en.wikipedia.org/wiki/Correlation_attack).
+Les bits de sorties du générateur pouvaient en effet être très fortement corrélées aux bits d'entrées des LFSR.
+
+
+Le script de résolution en utilisant cette attaque statistique (écrit très rapidement):
+
+
+```python
+from itertools import product, permutations
+from generator import CombinerGenerator
+from LFSR import LFSR
+poly1 = [19, 5, 2, 1]  # x^19+x^5+x^2+x
+poly2 = [19, 6, 2, 1]  # x^19+x^6+x^2+x
+poly3 = [19, 9, 8, 5]  # x^19+x^9+x^8+x^5
+
+
+def xor(b1, b2):
+    return bytes(a ^ b for a, b in zip(b1, b2))
+
+
+def combine(x1, x2, x3):
+    return (x1 and x2) ^ (x1 and x3) ^ (x2 and x3)
+
+
+with open("flag.png.part", "rb") as f:
+    clear_part_content = f.read()
+
+with open("flag.png.enc", "rb") as f:
+    encrypted_content = f.read()
+
+key = xor(clear_part_content, encrypted_content)
+
+key_as_bits = [int(bit) for byte in key for bit in format(byte, "08b")]
+
+# We are looking an array of 19 bits, 0 or 1. Which give us 2**19 possibilities.
+possible_initial_state_1 = []
+for state in product([0, 1], repeat=19):
+    rate = 0
+    L = LFSR(fpoly=poly1, state=list(state))
+    for i in key_as_bits:
+        if i == L.generateBit():
+            rate += 1
+    if 0.70 <= rate / len(key_as_bits) <= 0.80:
+        possible_initial_state_1.append(state)
+print(f"Found {len(possible_initial_state_1)} for state_1", possible_initial_state_1)
+# Found 1 for state_1 [(1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1)]
+
+possible_initial_state_2 = []
+for state in product([0, 1], repeat=19):
+    rate = 0
+    L = LFSR(fpoly=poly2, state=list(state))
+    for i in key_as_bits:
+        if i == L.generateBit():
+            rate += 1
+    if 0.70 <= rate / len(key_as_bits) <= 0.80:
+        possible_initial_state_2.append(state)
+print(f"Found {len(possible_initial_state_2)} for state_2", possible_initial_state_2)
+# Found 1 for state_2 [(1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 1, 1, 0)]
+
+possible_initial_state_3 = []
+for state in product([0, 1], repeat=19):
+    rate = 0
+    L = LFSR(fpoly=poly3, state=list(state))
+    for i in key_as_bits:
+        if i == L.generateBit():
+            rate += 1
+    if 0.70 <= rate / len(key_as_bits) <= 0.80:
+        possible_initial_state_3.append(state)
+print(f"Found {len(possible_initial_state_3)} for state_3", possible_initial_state_3)
+# Found 1 for state_3 [(1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1)]
+
+for state_1, state_2, state_3 in permutations([*possible_initial_state_1, *possible_initial_state_2, *possible_initial_state_3], 3):
+    L1 = LFSR(fpoly=poly1, state=list(state_1))
+    L2 = LFSR(fpoly=poly2, state=list(state_2))
+    L3 = LFSR(fpoly=poly3, state=list(state_3))
+
+    generator = CombinerGenerator(combine, L1, L2, L3)
+
+    key_attempt = [generator.generateBit() for i in range(len(key_as_bits))]
+
+    if key_attempt == key_as_bits:
+        L1 = LFSR(fpoly=poly1, state=list(state_1))
+        L2 = LFSR(fpoly=poly2, state=list(state_2))
+        L3 = LFSR(fpoly=poly3, state=list(state_3))
+
+        generator = CombinerGenerator(combine, L1, L2, L3)
+
+        with open("flag.png.enc", "rb") as f:
+            encrypted_content = f.read()
+
+        clear_content = b""
+
+        for enc_byte in encrypted_content:
+            clear_content += xor([enc_byte], generator.generateByte())
+
+        with open("decrypted_flag_correlation_attack.png", "wb") as f:
+            f.write(clear_content)
+```
+
+```bash
+$ file decrypted_flag_correlation_attack.png
+decrypted_flag_correlation_attack.png: PNG image data, 1920 x 1080, 8-bit/color RGBA, non-interlaced
+$ open decrypted_flag_correlation_attack.png
 ```
 
 ![flag](decrypted_flag.png)
