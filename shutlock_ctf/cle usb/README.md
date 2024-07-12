@@ -23,7 +23,7 @@ user.hash: newsuperuserforwin:$6$NBYlg3a0nG8eykJg$KnzV/9n5DpRkeNHLcdXfviKsh0Z9Na
 
 Un fichier `image.raw` nous est fourni ainsi que le hash utilisateur ci-dessus.
 
-Le fichier est le contenu de clé USB et est une image bootable:
+Le fichier est le contenu de clé USB est une image bootable:
 
 ```bash
 $ file image.raw 
