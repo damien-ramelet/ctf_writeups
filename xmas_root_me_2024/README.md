@@ -11,7 +11,7 @@ Rank: 25/625
 | Day 01 - Generous Santa | Web | 418 |
 | Day 02 - Wrapped Packet | Network | 292 |
 | Day 03 - Santa's Magic Sack | Web Game Hacking | 357 |
-| Day 04 - Build And Drustroy | Misc | 222 |
+| [Day 04 - Build And Drustroy](<Build And Drustroy/README.md>)| Misc | 222 |
 | Day 05 - The Friendly Snowman | AI | 430 |
 | Day 06 - Unwrap The Gift | Cryptography | 268 |
 | Day 07 - Go, Pwn, Gown | Pwn | 108 |
