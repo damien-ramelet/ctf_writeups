@@ -16,7 +16,7 @@ Classement: 24 / 397
 | Pomme de reinette et pomme d'API | Web | 347 | 32 |
 | Hisser les drapeaux | Web | 293 | 37 |
 | Liaisons dangereuses | Web | 100 | 66 |
-| Substix | Forensic | 490 | 9 |
+| [Substix](substix/README.md) | Forensic | 490 | 9 |
 | SpyDroid2 | Forensic | 469 | 15 |
 | Indice 7 | Forensic | 50 | 88 |
 | speedcoding | Dev | 490 | 9 |
